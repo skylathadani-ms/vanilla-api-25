@@ -1,0 +1,63 @@
+name: Azure Static Web Apps CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches:
+      - main
+
+jobs:
+  build_and_deploy_job:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+    runs-on: ubuntu-latest
+    name: Build and Deploy Job
+    environment:
+       name: 'Production'
+    permissions:
+       id-token: write
+       contents: read
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+          lfs: false
+      - name: Login to Azure
+        id: azurelogin
+        uses: azure/login@v2
+        with:
+           client-id: ${{ secrets.AZURE_STATIC_WEB_APPS_SALMON_GLACIER_08D42C19D_CLIENTID }}
+           tenant-id: ${{ secrets.AZURE_STATIC_WEB_APPS_SALMON_GLACIER_08D42C19D_TENANTID }}
+           subscription-id: ${{ secrets.AZURE_STATIC_WEB_APPS_SALMON_GLACIER_08D42C19D_SUBSCRIPTIONID }}
+      - name: Retrieve Azure Access Token
+        id: retrieveAccessToken
+        run: |
+           accessTokenString=$(az account get-access-token | tr '\n' ' ')
+           echo "accessTokenString=$accessTokenString"  >> $GITHUB_OUTPUT
+      - name: Build And Deploy
+        id: builddeploy
+        uses: mkarmark/staticstiesactionoryx@master
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_SALMON_GLACIER_08D42C19D }}
+          action: "upload"
+          ###### Repository/Build Configurations - These values can be configured to match your app requirements. ######
+          # For more information regarding Static Web App workflow configurations, please visit: https://aka.ms/swaworkflowconfig
+          app_location: "src" # App source code path
+          api_location: "" # Api source code path - optional
+          output_location: "" # Built app content directory - optional
+          azure_access_token: ${{ steps.retrieveAccessToken.outputs.accessTokenString }}
+          default_hostname: ${{ vars.AZURE_STATIC_WEB_APPS_SALMON_GLACIER_08D42C19D_DEFAULTHOSTNAME }}
+          ###### End of Repository/Build Configurations ######
+
+  close_pull_request_job:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    name: Close Pull Request Job
+    steps:
+      - name: Close Pull Request
+        id: closepullrequest
+        uses: mkarmark/staticstiesactionoryx@master
+        with:
+          action: "close"
